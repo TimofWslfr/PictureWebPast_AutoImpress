@@ -1,0 +1,2 @@
+# PictureWebPast_AutoImpress
+把剪贴板的图片直接复制到富媒体编辑器中，并自动压缩为合理的容量，且自动转化为jpeg格式
