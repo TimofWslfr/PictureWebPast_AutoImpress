@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<title>KindEditor JSP</title>
+	<link rel="stylesheet" href="../themes/default/default.css" />
+	<link rel="stylesheet" href="../plugins/code/prettify.css" />
+	<script charset="utf-8" src="../kindeditor-all-min.js"></script>	
+	<script charset="utf-8" src="../lang/zh_CN.js"></script>
+	<script charset="utf-8" src="../plugins/code/prettify.js"></script>
+	<script charset="utf-8" src="../jquery.js"></script>
+	<script charset="utf-8" src="../jquery.min.js"></script>
+	<script charset="utf-8" src="../jj.js"></script>
+	<script>
+		 
+	var editor;
+	KindEditor.ready(function(K) {
+		editor = K.create('textarea[name="content"]', {
+			resizeType : 1,//2或1或0，2时可以拖动改变宽度和高度，1时只能改变高度，0时不能拖动。(数据类型：Int，默认值：2)
+			allowPreviewEmoticons : false,//true时鼠标放在表情上可以预览表情。
+			allowImageUpload : true,//true时显示本地上传
+			uploadJson : 'uploadImgHelpConf.action',
+			items : [
+				'fontname', 'fontsize', '|', 'forecolor', 'hilitecolor', 'bold', 'italic', 'underline',
+				'removeformat', '|', 'justifyleft', 'justifycenter', 'justifyright', 'insertorderedlist',
+				'insertunorderedlist', '|', 'emoticons', 'image', 'link'],
+		afterCreate : function()
+            {
+                var doc = this.edit.doc; 
+                var cmd = this.edit.cmd; 
+                if(!K.WEBKIT && !K.GECKO)
+                {
+                    var pasted = false;
+                    $(doc.body).bind('paste', function(ev)
+                    {
+                        pasted = true;
+                        return true;
+                    });
+                    setTimeout(function()
+                    {
+                        $(doc.body).bind('keyup', function(ev)
+                        {
+                            if(pasted)
+                            {
+                                pasted = false;
+                                return true;
+                            }
+                            if(ev.keyCode == 86 && ev.ctrlKey) alert('您的浏览器不支持粘贴图片！');
+                        })
+                    }, 10);
+                }
+				//alert(K.WEBKIT);
+				
+                /* Paste in chrome.*/
+                /* Code reference from http://www.foliotek.com/devblog/copy-images-from-clipboard-in-javascript/. */
+                if(K.WEBKIT)
+                {
+					 
+                    $(doc.body).bind('paste', function(ev)
+                    {
+						
+                         
+                        var original = ev.originalEvent;
+                        var file     = original.clipboardData.items[0].getAsFile();
+						var size = file.size / 1024 > 1024 ? (~~(10 * file.size / 1024 / 1024)) / 10 + "MB" : ~~(file.size / 1024) + "KB";
+						alert(size);
+						//alert(file.getAsDataURL());
+						//如果图片小于100k则直接上传，否则压缩
+						
+                        if(file)
+                        {
+                            var reader = new FileReader();
+							 
+                            reader.onload = function(evt) 
+                            {
+ 								var img = new Image();
+								//var img = document.getElementById("img").children[0];
+                                var result = evt.target.result; 
+								alert("result:"+result );
+								img.src = result;
+								alert("ceshi :"+result.split(",")[0]+",,,"+result.split(",")[1].length);
+								//alert("23456578732--------" +img.width +",,,,"+img.height);
+								//alert(img);
+								var x_ = 0;
+								while(img.width == 0 && img.width == 0){
+									try{
+										reader.readAsDataURL(file);
+									}catch(err){
+									
+									}
+									//result = evt.target.result; 
+									img.src = result; 
+									x_++;
+									if(x_>5){
+										break;
+									}
+									 
+								}
+								alert(12345);
+								
+								//alert(img);
+								//console.log(img);
+                                //var result = evt.target.result;
+								
+								var father = compress(img);
+								
+								//alert(result);
+								//alert(father);
+								//document.getElementById('testInput').appendChild( img );
+								//document.body.appendChild( img ); 
+								result = father ;
+                                var arr    = result.split(",");
+								//alert("dadadada  "+arr);
+                                var data   = arr[1]; // raw base64
+								alert("data:"+data.length);
+                                var  contentType= arr[0].split(";")[0].split(":")[1];
+								//alert(contentType);
+								//alert("数组长度"+arr.length);
+								//var imgFile = dataURLtoBlob(father);
+								var img1 = document.getElementById("img").children[0];
+								var height_ = $("#editor_id").height();
+								var width_ = $("#editor_id").width();
+ 								
+								img1.src =  result;//base64
+								//$("#img").height(height_); 
+								//$("#img").width(width_);
+								//document.getElementById('testInput').appendChild( imgFile );
+                                html = '<img src="' + result + '" alt="" />';
+								//cmd.inserthtml(data);
+                                //$.post(createLink('file', 'ajaxPasteImage'), {editor: html}, function(data){cmd.inserthtml(data);});
+                            };
+                            reader.readAsDataURL(file);
+                        }
+                    });
+                }
+                /* Paste in firfox and other firfox.*/
+                else
+                {
+                    K(doc.body).bind('paste', function(ev)
+                    {
+                        setTimeout(function()
+                        {
+                            var html = K(doc.body).html();
+                            if(html.search(/<img src="data:.+;base64,/) > -1)
+                            {
+                                K(doc.body).html(html.replace(/<img src="data:.+;base64,.*".*\/>/, ''));
+                                $.post(createLink('file', 'ajaxPasteImage'), {editor: html}, function(data){K(doc.body).html(data);});
+                            }
+                        }, 80);
+                    });
+                }
+                /* End */
+            }
+		});
+	});
+ 
+	
+	/*
+	 * 保存
+	 */	
+	function save(){
+		var html = editor.html();//文章内容
+		editor.sync();
+		html = $("#editor_id").val();
+		var title_ = $("#titleId").val();//文章标题
+		var mod_list = $("#mod_list").val();//模块名称
+		var key_word = $("#key_word").val();//关键字
+		
+	    jQuery.post(
+		    	"addHelpConf.action", 
+			    {
+		    		tits : title_,
+		    		modName : mod_list,
+		    		keyWord : key_word,
+		    		context_ : html
+				},
+		     	function(data) {	
+					window.location.href = 'indexHelpConf.action';
+			  	}	      
+		    );	
+	}
+ 
+ function fn_x(ev){
+						
+                         
+                        var original = ev.originalEvent;
+                        var file     = original.clipboardData.items[0].getAsFile();
+						var size = file.size / 1024 > 1024 ? (~~(10 * file.size / 1024 / 1024)) / 10 + "MB" : ~~(file.size / 1024) + "KB";
+						alert(size);
+						//alert(file.getAsDataURL());
+						//如果图片小于100k则直接上传，否则压缩
+						
+                        if(file)
+                        {
+                            var reader = new FileReader();
+							reader.readAsDataURL(file);
+                            reader.onload = function(evt) 
+                            {
+ 								var img = new Image();
+								//var img = document.getElementById("img").children[0];
+                                var result = evt.target.result; 
+ 								img.src = result;
+ 						
+								 
+								 
+                            };
+                            //reader.readAsDataURL(file);
+                        }
+ }
+</script>
+ 
+</head>
+<body>
+<textarea id="editor_id" name="content" style="width:700px;height:200px;visibility:hidden;"></textarea>
+<div class="box" contenteditable="true" id="testInput">
+</div>
+<div id="img">
+            <img src="" alt="显示图片"  />
+        </div>
+</body>
+</html>
+ 
